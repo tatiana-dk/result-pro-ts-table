@@ -1,4 +1,18 @@
-export const russianImpressionistPaintings = [
+export interface Painting {
+  id: string;
+  title: string;
+  originalTitle?: string;
+  artist: string;
+  year: number;
+  widthCm?: number;
+  heightCm?: number;
+  medium: string;
+  currentLocation?: string;
+  isPublicDomain: boolean;
+  imageUrl?: string;
+}
+
+export const russianImpressionistPaintings: Painting[] = [
   {
     id: "ru001",
     title: "Парижское кафе ночью",
