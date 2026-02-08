@@ -1,20 +1,49 @@
 // core.ts
 
-import type { Column, TableConfig, TableState, ProcessedResult, Row } from "./types.ts";
+import type { Column, TableConfig, TableState, ProcessedResult, Row, Primitive } from "./types.ts";
 import { samplePaintings } from "./data.ts";
 
-// ────────────────────────────────────────────────
-// Функции обработки (пока заглушки)
-// ────────────────────────────────────────────────
-
+/** 
+ * Применяет глобальный поиск по всем searchable колонкам
+ * - Пустой поиск → возвращает исходный массив без изменений
+ * - Иначе оставляет только те строки, где хотя бы в одной searchable колонке 
+ *   найдена подстрока (без учёта регистра)
+ */
 export function applyGlobalSearch<T extends Row>(
   rows: T[],
   columns: Column<T>[],
   search: string
 ): T[] {
-  if (!search.trim()) return rows;
-  // TODO: lower-case поиск по searchable колонкам
-  return rows;
+  const query = search.trim().toLowerCase();
+
+  if (!query) {
+    return rows;
+  }
+
+  return rows.filter((row) => {
+    return columns.some((col) => {
+      if (!col.searchable) return false;
+
+      const value = getCellValue(row, col);
+
+      if (value === null || value === undefined) return false;
+
+      const strValue = String(value).toLowerCase();
+
+      return strValue.includes(query);
+    });
+  });
+}
+
+/**
+ * Вспомогательная функция: достаёт значение ячейки по колонке
+ * Поддерживает как прямой ключ, так и функцию accessor
+ */
+function getCellValue<T extends Row>(row: T, col: Column<T>): Primitive {
+  if (typeof col.accessor === "function") {
+    return col.accessor(row);
+  }
+  return row[col.accessor];
 }
 
 export function applyFilters<T extends Row>(
