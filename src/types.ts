@@ -6,7 +6,7 @@ export type Row = Record<string, Primitive>;
 
 export type ColumnId = string;
 
-export interface Column<T extends Row = Row> {
+export interface Column<T = any> {
   id: ColumnId;
   header: string;
   accessor: keyof T | ((row: T) => Primitive);

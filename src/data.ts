@@ -1,3 +1,4 @@
+type Primitive = string | number | boolean | null | undefined;
 export interface Painting {
   id: string;
   title: string;
@@ -10,9 +11,10 @@ export interface Painting {
   currentLocation?: string;
   isPublicDomain: boolean;
   imageUrl?: string;
+  [key: string]: Primitive | undefined;
 }
 
-export const russianImpressionistPaintings: Painting[] = [
+export const samplePaintings: Painting[] = [
   {
     id: "ru001",
     title: "Парижское кафе ночью",
