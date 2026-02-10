@@ -1,6 +1,6 @@
 // core.ts
 
-import type { Column, TableConfig, TableState, ProcessedResult, Row, Primitive } from "./types.ts";
+import type { Column, TableConfig, TableState, ProcessedResult, ColumnId, Primitive } from "./types.ts";
 
 /** 
  * Применяет глобальный поиск по всем searchable колонкам
@@ -46,13 +46,82 @@ function getCellValue<T>(row: T, col: Column<T>): Primitive {
   return value as Primitive;
 }
 
+/**
+ * Применяет все активные фильтры к строкам
+ * Если фильтры выключены в конфиге — возвращает исходный массив без изменений
+ */
 export function applyFilters<T>(
   rows: T[],
   columns: Column<T>[],
-  filters: Record<string, any>
+  filters: Record<ColumnId, any>,
+  filterable: boolean = true
 ): T[] {
-  // TODO: реализация фильтров
-  return rows;
+  // Если фильтры полностью выключены в конфиге → ничего не делаем
+  if (!filterable) {
+    return rows;
+  }
+
+  // Если нет активных фильтров → тоже пропускаем
+  if (Object.keys(filters).length === 0) {
+    return rows;
+  }
+
+  return rows.filter((row) => {
+    // Для каждой активной колонки с фильтром
+    return Object.entries(filters).every(([colId, filterValue]) => {
+      const column = columns.find((c) => c.id === colId);
+      if (!column || !column.filterable) return true; // нет такой колонки или фильтр запрещён
+
+      const cellValue = getCellValue(row, column);
+
+      // Если значение в ячейке null/undefined → считаем не прошедшим фильтр
+      if (cellValue == null) {
+        return false;
+      }
+
+      switch (column.filterable.type) {
+        case "text":
+          if (column.filterable.mode !== "contains") return true;
+          if (!filterValue || typeof filterValue !== "string") return true;
+
+          const query = String(filterValue).trim().toLowerCase();
+          if (!query) return true;
+
+          return String(cellValue).toLowerCase().includes(query);
+
+        case "number":
+          if (column.filterable.mode !== "range") return true;
+
+          const range = filterValue as { min?: number; max?: number } | undefined;
+          if (!range) return true;
+
+          const numValue = Number(cellValue);
+          if (isNaN(numValue)) return false;
+
+          let passes = true;
+
+          if (range.min !== undefined && range.min !== null) {
+            passes = passes && numValue >= range.min;
+          }
+
+          if (range.max !== undefined && range.max !== null) {
+            passes = passes && numValue <= range.max;
+          }
+
+          return passes;
+
+        case "boolean":
+          if (typeof filterValue !== "boolean") return true;
+          return cellValue === filterValue;
+
+        // case "select":  // можно добавить позже
+        //   ...
+
+        default:
+          return true; // неизвестный тип фильтра — пропускаем
+      }
+    });
+  });
 }
 
 export function applySort<T>(
