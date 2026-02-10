@@ -35,7 +35,7 @@ export interface TableState {
   page: number;
 }
 
-export interface ProcessedResult<T extends Row> {
+export interface ProcessedResult<T> {
   visibleRows: T[];
   totalPages: number;
 }

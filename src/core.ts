@@ -1,7 +1,6 @@
 // core.ts
 
 import type { Column, TableConfig, TableState, ProcessedResult, Row, Primitive } from "./types.ts";
-import { samplePaintings } from "./data.ts";
 
 /** 
  * Применяет глобальный поиск по всем searchable колонкам
@@ -9,7 +8,7 @@ import { samplePaintings } from "./data.ts";
  * - Иначе оставляет только те строки, где хотя бы в одной searchable колонке 
  *   найдена подстрока (без учёта регистра)
  */
-export function applyGlobalSearch<T extends Row>(
+export function applyGlobalSearch<T>(
   rows: T[],
   columns: Column<T>[],
   search: string
@@ -39,14 +38,15 @@ export function applyGlobalSearch<T extends Row>(
  * Вспомогательная функция: достаёт значение ячейки по колонке
  * Поддерживает как прямой ключ, так и функцию accessor
  */
-function getCellValue<T extends Row>(row: T, col: Column<T>): Primitive {
+function getCellValue<T>(row: T, col: Column<T>): Primitive {
   if (typeof col.accessor === "function") {
     return col.accessor(row);
   }
-  return row[col.accessor];
+  const value = row[col.accessor];
+  return value as Primitive;
 }
 
-export function applyFilters<T extends Row>(
+export function applyFilters<T>(
   rows: T[],
   columns: Column<T>[],
   filters: Record<string, any>
@@ -55,7 +55,7 @@ export function applyFilters<T extends Row>(
   return rows;
 }
 
-export function applySort<T extends Row>(
+export function applySort<T>(
   rows: T[],
   columns: Column<T>[],
   sort: TableState["sort"]
@@ -65,7 +65,7 @@ export function applySort<T extends Row>(
   return rows;
 }
 
-export function applyPagination<T extends Row>(
+export function applyPagination<T>(
   rows: T[],
   page: number,
   pageSize: number
@@ -78,7 +78,7 @@ export function applyPagination<T extends Row>(
   return { pageRows, totalPages };
 }
 
-export function getProcessedData<T extends Row>(
+export function getProcessedData<T>(
   rows: T[],
   columns: Column<T>[],
   config: TableConfig,
