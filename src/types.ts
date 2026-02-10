@@ -17,7 +17,8 @@ export interface Column<T = any> {
     | { type: "text"; mode: "contains" }
     | { type: "number"; mode: "range" }
     | { type: "select"; mode: "exact"; options: string[] }
-    | { type: "boolean" };
+    | { type: "boolean" }
+    | { type: "date"; mode: "before" | "after" | "range" };
 }
 
 export interface TableConfig {

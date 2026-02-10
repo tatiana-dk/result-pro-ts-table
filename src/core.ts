@@ -114,6 +114,45 @@ export function applyFilters<T>(
           if (typeof filterValue !== "boolean") return true;
           return cellValue === filterValue;
 
+        case "date":
+          if (!filterValue || typeof filterValue !== "object") return true;
+
+          const dateValue = getCellValue(row, column);
+          if (!dateValue || typeof dateValue !== "string") return false;
+
+          // Ожидаем ISO-строку в ячейке, например "1894-01-01"
+          const cellDate = new Date(dateValue);
+          if (isNaN(cellDate.getTime())) return false; // неверная дата
+
+          const mode = column.filterable.mode;
+
+          if (mode === "before") {
+            const before = filterValue.before ? new Date(filterValue.before) : null;
+            if (!before || isNaN(before.getTime())) return true;
+            return cellDate <= before;   // включаем сам день
+          }
+
+          if (mode === "after") {
+            const after = filterValue.after ? new Date(filterValue.after) : null;
+            if (!after || isNaN(after.getTime())) return true;
+            return cellDate >= after;    // включаем сам день
+          }
+
+          if (mode === "range") {
+            let ok = true;
+            if (filterValue.after) {
+              const after = new Date(filterValue.after);
+              if (!isNaN(after.getTime())) ok = ok && cellDate >= after;
+            }
+            if (filterValue.before) {
+              const before = new Date(filterValue.before);
+              if (!isNaN(before.getTime())) ok = ok && cellDate <= before;
+            }
+            return ok;
+          }
+
+          return true;
+
         // case "select":  // можно добавить позже
         //   ...
 
