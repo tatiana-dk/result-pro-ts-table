@@ -163,14 +163,53 @@ export function applyFilters<T>(
   });
 }
 
+/**
+ * Применяет сортировку по одной колонке, если она включена
+ * Использует стабильную сортировку (сохраняет порядок равных элементов)
+ */
 export function applySort<T>(
   rows: T[],
   columns: Column<T>[],
   sort: TableState["sort"]
 ): T[] {
-  if (!sort.columnId || !sort.direction) return rows;
-  // TODO: stable sort
-  return rows;
+  // Нет активной сортировки или сортировка выключена → возвращаем как есть
+  if (!sort.columnId || !sort.direction) {
+    return rows;
+  }
+
+  // Находим колонку
+  const column = columns.find(c => c.id === sort.columnId);
+  if (!column || !column.sortable) {
+    return rows;
+  }
+
+  // Делаем копию, чтобы не мутировать исходный массив
+  return [...rows].sort((a, b) => {
+    const va = getCellValue(a, column);
+    const vb = getCellValue(b, column);
+
+    // Обработка null/undefined — считаем их меньше любых значений
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;   // null идёт в конец при asc
+    if (vb == null) return -1;
+
+    // Приведение к сравнимому виду
+    let aVal = va;
+    let bVal = vb;
+
+    // Для строк — без учёта регистра
+    if (typeof aVal === "string" && typeof bVal === "string") {
+      aVal = aVal.toLowerCase();
+      bVal = bVal.toLowerCase();
+    }
+
+    // Для чисел и дат — обычное сравнение
+    // (даты как строки ISO уже сравниваются лексикографически корректно)
+
+    if (aVal < bVal) return sort.direction === "asc" ? -1 : 1;
+    if (aVal > bVal) return sort.direction === "asc" ? 1 : -1;
+    return 0;
+  });
 }
 
 export function applyPagination<T>(
@@ -202,7 +241,7 @@ export function getProcessedData<T>(
     result = applyFilters(result, columns, state.filters);
   }
 
-  if (config.sortable && state.sort.columnId) {
+  if (config.sortable && state.sort.columnId && state.sort.direction) {
     result = applySort(result, columns, state.sort);
   }
 
@@ -214,3 +253,24 @@ export function getProcessedData<T>(
 
   return { visibleRows: result, totalPages: 1 };
 }
+
+// При клике на заголовок колонки с id = clickedColumnId
+// function handleHeaderClick(clickedColumnId: ColumnId) {
+//   setState(prev => {
+//     const current = prev.sort;
+
+//     // Если кликнули по уже активной колонке
+//     if (current.columnId === clickedColumnId) {
+//       if (current.direction === "asc") {
+//         return { ...prev, sort: { columnId: clickedColumnId, direction: "desc" } };
+//       }
+//       if (current.direction === "desc") {
+//         return { ...prev, sort: { columnId: null, direction: null } }; // сброс
+//       }
+//       return { ...prev, sort: { columnId: clickedColumnId, direction: "asc" } };
+//     }
+
+//     // Клик по новой колонке → сразу asc
+//     return { ...prev, sort: { columnId: clickedColumnId, direction: "asc" } };
+//   });
+// }
