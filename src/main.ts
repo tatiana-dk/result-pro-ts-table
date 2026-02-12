@@ -5,11 +5,11 @@ import { samplePaintings } from "./data.ts";
 import type { Column, TableConfig, TableState } from "./types.ts";
 
 const columns: Column<typeof samplePaintings[number]>[] = [
-  { id: "title", header: "Название", accessor: "title", searchable: true, sortable: true },
-  { id: "artist", header: "Художник", accessor: "artist", searchable: true, sortable: true },
-  { id: "year", header: "Год", accessor: "year", sortable: true },
-  { id: "medium", header: "Техника", accessor: "medium", searchable: true },
-  { id: "isPublicDomain", header: "Public Domain", accessor: "isPublicDomain", sortable: true },
+  { id: "title", header: "Название", accessor: "title", searchable: true, sortable: true, filterable: { type: "text", mode: "contains" } },
+  { id: "artist", header: "Художник", accessor: "artist", searchable: true, sortable: true, filterable: { type: "text", mode: "contains" } },
+  { id: "year", header: "Год", accessor: "year", sortable: true, filterable: { type: "date", mode: "range" } },
+  { id: "medium", header: "Техника", accessor: "medium", searchable: true, filterable: { type: "text", mode: "contains" } },
+  { id: "isPublicDomain", header: "Public Domain", accessor: "isPublicDomain", sortable: true, filterable: { type: "boolean" } },
 ];
 
 const config: TableConfig = {
@@ -23,7 +23,7 @@ const config: TableConfig = {
 const initialState: TableState = {
   search: "",
   sort: { columnId: null, direction: null },
-  filters: {title: "восход"},
+  filters: {year: { before: '1900' }},
   page: 1,
   pageSize: 10,
 };
