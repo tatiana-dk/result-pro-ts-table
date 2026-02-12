@@ -70,6 +70,7 @@ export function applyFilters<T>(
     // Для каждой активной колонки с фильтром
     return Object.entries(filters).every(([colId, filterValue]) => {
       const column = columns.find((c) => c.id === colId);
+      
       if (!column || !column.filterable) return true; // нет такой колонки или фильтр запрещён
 
       const cellValue = getCellValue(row, column);
@@ -246,12 +247,26 @@ export function getProcessedData<T>(
   }
 
   if (config.paginated) {
-    const pageSize = config.pageSize ?? 20;
+    const pageSize = state.pageSize || config.defaultPageSize || 20;
     const { pageRows, totalPages } = applyPagination(result, state.page, pageSize);
-    return { visibleRows: pageRows, totalPages };
+
+    // Если текущая страница больше, чем есть всего — переходим на последнюю
+    const safePage = Math.min(state.page, totalPages);
+
+    return {
+      visibleRows: pageRows,
+      totalPages,
+      currentPage: safePage,
+      pageSize,
+    };
   }
 
-  return { visibleRows: result, totalPages: 1 };
+  return {
+    visibleRows: result,
+    totalPages: 1,
+    currentPage: 1,
+    pageSize: state.pageSize || 20,
+  };
 }
 
 // При клике на заголовок колонки с id = clickedColumnId

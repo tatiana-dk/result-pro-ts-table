@@ -23,15 +23,14 @@ const config: TableConfig = {
 const initialState: TableState = {
   search: "",
   sort: { columnId: null, direction: null },
-  filters: {},
+  filters: {title: "восход"},
   page: 1,
+  pageSize: 10,
 };
 
 function runDemo() {
   const result = getProcessedData(samplePaintings, columns, config, initialState);
-  console.log("Видимых строк:", result.visibleRows.length);
-  console.log("Всего страниц:", result.totalPages);
-  console.log("Первые строки:", result.visibleRows.slice(0, 3));
+  console.log(result.visibleRows.slice(0, 10));
 }
 
 runDemo();

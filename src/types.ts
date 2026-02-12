@@ -26,7 +26,9 @@ export interface TableConfig {
   sortable: boolean;
   filterable: boolean;
   paginated: boolean;
-  pageSize?: number; // default: 20
+  pageSize?: number;
+  pageSizeOptions?: number[];
+  defaultPageSize?: number;
 }
 
 export interface TableState {
@@ -34,9 +36,12 @@ export interface TableState {
   sort: { columnId: ColumnId | null; direction: "asc" | "desc" | null };
   filters: Record<ColumnId, any>;
   page: number;
+  pageSize: number;
 }
 
 export interface ProcessedResult<T> {
   visibleRows: T[];
   totalPages: number;
+  currentPage: number;
+  pageSize: number;
 }
