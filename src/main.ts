@@ -6,6 +6,98 @@ import { debounce, getCellValue } from "./utils.ts";
 import type { Painting } from "./data.ts";
 import type { ColumnId, Column, TableConfig } from "./types.ts";
 
+const STORAGE_KEY = 'paintings-table-state';
+
+function saveStateToStorage() {
+  const serializableState = {
+    search: state.search,
+    sort: state.sort,
+    filters: state.filters,
+    page: state.page,
+    pageSize: state.pageSize,
+  };
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializableState));
+  } catch (err) {
+    console.warn('Не удалось сохранить состояние в localStorage', err);
+  }
+}
+
+function loadStateFromStorage(): Partial<AppState> | null {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return null;
+
+    const parsed = JSON.parse(saved);
+
+    // Минимальная проверка структуры
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      typeof parsed.page !== 'number' ||
+      typeof parsed.pageSize !== 'number'
+    ) {
+      return null;
+    }
+
+    return {
+      search: typeof parsed.search === 'string' ? parsed.search : "",
+      sort: isValidSort(parsed.sort) ? parsed.sort : { columnId: null, direction: null },
+      filters: isValidFilters(parsed.filters) ? parsed.filters : {},
+      page: Math.max(1, Number(parsed.page) || 1),
+      pageSize: [10, 20, 50, 100].includes(Number(parsed.pageSize))
+        ? Number(parsed.pageSize)
+        : 20,
+    };
+  } catch (err) {
+    console.warn('Ошибка чтения состояния из localStorage', err);
+    return null;
+  }
+}
+
+// Вспомогательные проверки
+function isValidSort(sort: any): sort is AppState['sort'] {
+  return (
+    sort &&
+    (sort.columnId === null || typeof sort.columnId === 'string') &&
+    (sort.direction === null || sort.direction === 'asc' || sort.direction === 'desc')
+  );
+}
+
+function isValidFilters(filters: any): filters is Record<string, any> {
+  return typeof filters === 'object' && filters !== null;
+}
+
+function syncUIWithState() {
+  // Поиск
+  const searchInput = document.getElementById("search") as HTMLInputElement;
+  searchInput.value = state.search || "";
+
+  // Фильтры — художник
+  const artistInput = document.getElementById("filter-artist") as HTMLInputElement;
+  artistInput.value = (state.filters.artist as string) || "";
+
+  // Фильтры — год (диапазон)
+  const yearMinInput = document.getElementById("filter-year-min") as HTMLInputElement;
+  const yearMaxInput = document.getElementById("filter-year-max") as HTMLInputElement;
+
+  const yearFilter = state.filters.year as { min?: number; max?: number } | undefined;
+
+  yearMinInput.value = yearFilter?.min != null ? String(yearFilter.min) : "";
+  yearMaxInput.value = yearFilter?.max != null ? String(yearFilter.max) : "";
+
+  // Фильтр — public domain
+  const pubSelect = document.getElementById("filter-public") as HTMLSelectElement;
+  if (state.filters.isPublicDomain === true) {
+    pubSelect.value = "true";
+  } else if (state.filters.isPublicDomain === false) {
+    pubSelect.value = "false";
+  } else {
+    pubSelect.value = "";
+  }
+}
+
 interface AppState {
   search: string;
   sort: { columnId: ColumnId | null; direction: "asc" | "desc" | null };
@@ -201,9 +293,23 @@ function runPipeline() {
 
   (document.getElementById("prev") as HTMLButtonElement).disabled = state.page <= 1;
   (document.getElementById("next") as HTMLButtonElement).disabled = state.page >= totalPages;
+
+  saveStateToStorage();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  const savedState = loadStateFromStorage();
+
+  if (savedState) {
+    state = { ...state, ...savedState };
+    
+    // Дополнительная защита: если страница слишком большая — сбросим на 1
+    // (будет скорректировано в runPipeline после вычисления totalPages)
+    if (state.page < 1) state.page = 1;
+  }
+
+  syncUIWithState();
+
   renderHeaders(columns);
   runPipeline();
 });
