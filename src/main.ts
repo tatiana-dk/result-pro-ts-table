@@ -269,6 +269,29 @@ document.getElementById("page-size")!.addEventListener("change", (e) => {
   runPipeline();
 });
 
+document.getElementById("reset-all")!.addEventListener("click", () => {
+  if (!confirm("Сбросить все настройки таблицы?")) return;
+
+  localStorage.removeItem(STORAGE_KEY);
+
+  // Возвращаем начальное состояние
+  state = {
+    search: "",
+    sort: { columnId: null, direction: null },
+    filters: {},
+    page: 1,
+    pageSize: 20,
+  };
+
+  // Очищаем поля ввода
+  (document.getElementById("search") as HTMLInputElement).value = "";
+  document.querySelectorAll<HTMLInputElement | HTMLSelectElement>(".filters input, .filters select").forEach(el => {
+    el.value = "";
+  });
+
+  runPipeline();
+});
+
 function getTotalPages(): number {
   const processed = getProcessedData(samplePaintings, columns, config, state);
   return processed.totalPages;

@@ -125,3 +125,13 @@ tbody tr:hover {
     align-items: stretch;
   }
 }
+
+button.danger {
+  background: #ffebee;
+  color: #c62828;
+  border-color: #ef9a9a;
+}
+
+button.danger:hover:not(:disabled) {
+  background: #ffcdd2;
+}
