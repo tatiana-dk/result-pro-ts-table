@@ -128,25 +128,25 @@ export function applyFilters<T>(
           const mode = column.filterable.mode;
 
           if (mode === "before") {
-            const before = filterValue.before ? new Date(filterValue.before) : null;
+            const before = filterValue.max ? new Date(filterValue.max) : null;
             if (!before || isNaN(before.getTime())) return true;
             return cellDate <= before;   // включаем сам день
           }
 
           if (mode === "after") {
-            const after = filterValue.after ? new Date(filterValue.after) : null;
+            const after = filterValue.min ? new Date(filterValue.min) : null;
             if (!after || isNaN(after.getTime())) return true;
             return cellDate >= after;    // включаем сам день
           }
 
           if (mode === "range") {
             let ok = true;
-            if (filterValue.after) {
-              const after = new Date(filterValue.after);
+            if (filterValue.min) {
+              const after = new Date(filterValue.min);
               if (!isNaN(after.getTime())) ok = ok && cellDate >= after;
             }
-            if (filterValue.before) {
-              const before = new Date(filterValue.before);
+            if (filterValue.max) {
+              const before = new Date(filterValue.max);
               if (!isNaN(before.getTime())) ok = ok && cellDate <= before;
             }
             return ok;

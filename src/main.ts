@@ -4,30 +4,7 @@ import { getProcessedData } from "./core.ts";
 import { samplePaintings } from "./data.ts";
 import { debounce, getCellValue } from "./utils.ts";
 import type { Painting } from "./data.ts";
-import type { Primitive, ColumnId, Column, TableConfig, TableState } from "./types.ts";
-
-// const config: TableConfig = {
-//   searchable: true,
-//   sortable: true,
-//   filterable: true,
-//   paginated: true,
-//   pageSize: 10,
-// };
-
-// const initialState: TableState = {
-//   search: "",
-//   sort: { columnId: null, direction: null },
-//   filters: {year: { before: '1900' }},
-//   page: 1,
-//   pageSize: 10,
-// };
-
-// function runDemo() {
-//   const result = getProcessedData(samplePaintings, columns, config, initialState);
-//   console.log(result.visibleRows.slice(0, 10));
-// }
-
-// runDemo();
+import type { ColumnId, Column, TableConfig } from "./types.ts";
 
 interface AppState {
   search: string;
@@ -36,8 +13,6 @@ interface AppState {
   page: number;
   pageSize: number;
 }
-
-type GetCellValue = <T>(row: T, col: Column<T>) => Primitive;
 
 let state: AppState = {
   search: "",
@@ -135,8 +110,8 @@ function updateFilters() {
 
   if (minYear || maxYear) {
     state.filters.year = {};
-    if (minYear) state.filters.year.min = Number(minYear);
-    if (maxYear) state.filters.year.max = Number(maxYear);
+    if (minYear) state.filters.year.min = String(minYear);
+    if (maxYear) state.filters.year.max = String(maxYear);
   }
 
   const pubSelect = document.getElementById("filter-public") as HTMLSelectElement;
