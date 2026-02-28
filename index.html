@@ -2,12 +2,54 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>result-pro-ts-table</title>
+    <link rel="stylesheet" href="/src/style.css">
   </head>
   <body>
-    <div id="app"></div>
+    <div class="controls">
+    <input type="search" id="search" placeholder="Поиск по названию, художнику…" autocomplete="off">
+
+    <div class="filters">
+      <label>Художник: <input type="text" id="filter-artist" placeholder="содержит"></label>
+      <label>Год от: <input type="number" id="filter-year-min" min="1800" max="1950"></label>
+      <label>Год до: <input type="number" id="filter-year-max" min="1800" max="1950"></label>
+      <label>Public domain:
+        <select id="filter-public">
+          <option value="">—</option>
+          <option value="true">Да</option>
+          <option value="false">Нет</option>
+        </select>
+      </label>
+      <button id="clear-filters">Сбросить фильтры</button>
+    </div>
+  </div>
+
+  <table id="paintings">
+    <thead>
+      <tr>
+        <th data-col="title" class="sortable">Название</th>
+        <th data-col="artist" class="sortable">Художник</th>
+        <th data-col="year" class="sortable">Год</th>
+        <th data-col="medium">Техника</th>
+        <th data-col="isPublicDomain" class="sortable">Public domain</th>
+      </tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+  </table>
+
+  <div class="pagination" id="pagination">
+    <button id="prev">← Назад</button>
+    <span id="page-info">Страница 1 из 1</span>
+    <button id="next">Вперёд →</button>
+    <select id="page-size">
+      <option value="10">10</option>
+      <option value="20" selected>20</option>
+      <option value="50">50</option>
+      <option value="100">100</option>
+    </select>
+  </div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
