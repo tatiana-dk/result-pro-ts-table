@@ -213,17 +213,20 @@ export function applySort<T>(
   });
 }
 
+function getTotalPages<T>(rows: T[], pageSize: number) {
+  return Math.ceil(rows.length / pageSize) || 1;
+}
+
 export function applyPagination<T>(
   rows: T[],
   page: number,
   pageSize: number
-): { pageRows: T[]; totalPages: number } {
+): { pageRows: T[]; } {
   const start = (page - 1) * pageSize;
   const end = start + pageSize;
   const pageRows = rows.slice(start, end);
-  const totalPages = Math.ceil(rows.length / pageSize) || 1;
 
-  return { pageRows, totalPages };
+  return { pageRows };
 }
 
 export function getProcessedData<T>(
@@ -248,10 +251,12 @@ export function getProcessedData<T>(
 
   if (config.paginated) {
     const pageSize = state.pageSize || config.defaultPageSize || 20;
-    const { pageRows, totalPages } = applyPagination(result, state.page, pageSize);
+    const totalPages = getTotalPages(result, pageSize);
 
     // Если текущая страница больше, чем есть всего — переходим на последнюю
     const safePage = Math.min(state.page, totalPages);
+
+    const { pageRows } = applyPagination(result, safePage, pageSize);
 
     return {
       visibleRows: pageRows,

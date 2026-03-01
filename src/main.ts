@@ -335,6 +335,7 @@ function updateFilters() {
   });
 
   app.state.filters = newFilters;
+  
   runPipeline();
 }
 
