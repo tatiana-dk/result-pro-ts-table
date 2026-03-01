@@ -112,6 +112,12 @@ function syncUIWithState() {
     searchInput.value = app.state.search || "";
   }
 
+  // Размер страницы (отдельно, т.к. не фильтр по колонке)
+  const pageSizeInput = document.getElementById('page-size') as HTMLSelectElement | null;
+  if (pageSizeInput) {
+    pageSizeInput.value = String(app.state.pageSize) || "";
+  }
+
   filterBindings.forEach(({ id, key, setValue }) => {
     const element = document.getElementById(id) as
       | HTMLInputElement
@@ -406,8 +412,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // (будет скорректировано в runPipeline после вычисления totalPages)
     if (app.state.page < 1) app.state.page = 1;
   }
-
-  console.log(app.state)
 
   syncUIWithState();
 
