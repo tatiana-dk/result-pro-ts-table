@@ -8,6 +8,7 @@ import type { ColumnId, Column, TableConfig, Primitive } from "./types.ts";
 
 // Типы и константы
 const STORAGE_KEY = 'paintings-table-state' as const;
+const PAGE_SIZE_DEFAULT = 20 as const;
 
 const filterBindings: FilterBinding[] = [
   {
@@ -309,10 +310,20 @@ document.getElementById("reset-all")!.addEventListener("click", () => {
   };
 
   // Очищаем поля ввода
-  (document.getElementById("search") as HTMLInputElement).value = "";
+  const searchInput = document.getElementById("search") as HTMLInputElement | null;
+  if (searchInput) {
+    searchInput.value = "";
+  }
+  
   document.querySelectorAll<HTMLInputElement | HTMLSelectElement>(".filters input, .filters select").forEach(el => {
     el.value = "";
   });
+
+  // Сбрасываем размер страницы
+  const pageSizeInput = document.getElementById('page-size') as HTMLSelectElement | null;
+  if (pageSizeInput) {
+    pageSizeInput.value = String(PAGE_SIZE_DEFAULT);
+  }
 
   runPipeline();
 });
@@ -335,7 +346,7 @@ function updateFilters() {
   });
 
   app.state.filters = newFilters;
-  
+
   runPipeline();
 }
 
