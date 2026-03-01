@@ -377,11 +377,16 @@ function getTotalPages(): number {
 
 function runPipeline() {
   const processed = computeVisibleData();
+  updatePage(processed);
   updateUI(processed);
 }
 
 function computeVisibleData() {
   return getProcessedData(samplePaintings, app.columns, app.config, app.state);
+}
+
+function updatePage(processed: ReturnType<typeof getProcessedData>) {
+  app.state.page = processed.currentPage ?? app.state.page;
 }
 
 function updateUI(processed: ReturnType<typeof getProcessedData>) {
@@ -406,7 +411,7 @@ function updatePagination(processed: any) {
   const prev = document.getElementById("prev") as HTMLButtonElement;
   const next = document.getElementById("next") as HTMLButtonElement;
 
-  const page = processed.currentPage ?? app.state.page;
+  const page = app.state.page;
   const total = processed.totalPages;
 
   info.textContent = `Страница ${page} из ${total || 1}`;
