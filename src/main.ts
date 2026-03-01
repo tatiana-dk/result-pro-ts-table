@@ -4,7 +4,7 @@ import { getProcessedData } from "./core.ts";
 import { samplePaintings } from "./data.ts";
 import { debounce, getCellValue } from "./utils.ts";
 import type { Painting } from "./data.ts";
-import type { ColumnId, Column, TableConfig, Primitive } from "./types.ts";
+import type { ColumnId, Column, TableConfig } from "./types.ts";
 
 // Типы и константы
 const STORAGE_KEY = 'paintings-table-state' as const;
