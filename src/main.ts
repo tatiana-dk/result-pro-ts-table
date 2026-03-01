@@ -4,17 +4,140 @@ import { getProcessedData } from "./core.ts";
 import { samplePaintings } from "./data.ts";
 import { debounce, getCellValue } from "./utils.ts";
 import type { Painting } from "./data.ts";
-import type { ColumnId, Column, TableConfig } from "./types.ts";
+import type { ColumnId, Column, TableConfig, Primitive } from "./types.ts";
 
-const STORAGE_KEY = 'paintings-table-state';
+// Типы и константы
+const STORAGE_KEY = 'paintings-table-state' as const;
+
+const filterBindings: FilterBinding[] = [
+  {
+    id: "filter-artist",
+    key: "artist",
+    getValue: el => (el as HTMLInputElement).value.trim() || undefined,
+    setValue: (el, v) => { el.value = typeof v === "string" ? v : ""; },
+  },
+  {
+    id: "filter-year-min",
+    key: "year",
+    getValue: el => {
+      const v = (el as HTMLInputElement).value;
+      return v ? { min: String(v) } : undefined;
+    },
+    setValue: (el, v: { min?: string | number }) => {
+      const min = v?.min;
+      el.value = min != null ? String(min) : "";
+    },
+  },
+  {
+    id: "filter-year-max",
+    key: "year",
+    getValue: el => {
+      const v = (el as HTMLInputElement).value;
+      return v ? { max: String(v) } : undefined;
+    },
+    setValue: (el, v: { max?: string | number }) => {
+      const max = v?.max;
+      el.value = max != null ? String(max) : "";
+    },
+  },
+  {
+    id: "filter-public",
+    key: "isPublicDomain",
+    getValue: el => {
+      const v = (el as HTMLSelectElement).value;
+      if (v === "true") return true;
+      if (v === "false") return false;
+      return undefined;
+    },
+    setValue: (el, value) => {
+      if (value === true) {
+        el.value = "true";
+      } else if (value === false) {
+        el.value = "false";
+      } else {
+        el.value = "";
+      }
+    },
+  },
+] as const;
+
+type RowType = Painting;
+
+type FilterBinding = {
+  id: string;
+  key: ColumnId;
+  getValue: (el: HTMLInputElement | HTMLSelectElement) => any;
+  setValue: (el: HTMLInputElement | HTMLSelectElement, value: any) => void;
+};
+interface AppState {
+  search: string;
+  sort: { columnId: ColumnId | null; direction: "asc" | "desc" | null };
+  filters: Record<ColumnId, any>;
+  page: number;
+  pageSize: number;
+}
+
+// Контекст приложения
+const app = {
+  state: {
+    search: "",
+    sort: { columnId: null, direction: null } as AppState["sort"],
+    filters: {} as Record<ColumnId, any>,
+    page: 1,
+    pageSize: 20,
+  } satisfies AppState,
+
+  columns: [
+    { id: "title", header: "Название", accessor: "title", searchable: true, sortable: true, filterable: { type: "text", mode: "contains" } },
+    { id: "artist", header: "Художник", accessor: "artist", searchable: true, sortable: true, filterable: { type: "text", mode: "contains" } },
+    { id: "year", header: "Год", accessor: "year", sortable: true, filterable: { type: "date", mode: "range" } },
+    { id: "medium", header: "Техника", accessor: "medium", searchable: true, filterable: { type: "text", mode: "contains" } },
+    { id: "isPublicDomain", header: "Public Domain", accessor: "isPublicDomain", sortable: true, filterable: { type: "boolean" } },
+  ] as Column<RowType>[],
+
+  config: {
+    searchable: true,
+    sortable: true,
+    filterable: true,
+    paginated: true,
+    pageSizeOptions: [10, 20, 50, 100],
+  } satisfies TableConfig,
+};
+
+// ─── Хелперы ──────────────────────────────────────────────
+function syncUIWithState() {
+  // Поиск (отдельно, т.к. не фильтр по колонке)
+  const searchInput = document.getElementById("search") as HTMLInputElement | null;
+  if (searchInput) {
+    searchInput.value = app.state.search || "";
+  }
+
+  filterBindings.forEach(({ id, key, setValue }) => {
+    const element = document.getElementById(id) as
+      | HTMLInputElement
+      | HTMLSelectElement
+      | null;
+
+    if (!element) {
+      console.warn(`Элемент с id "${id}" не найден`);
+      return;
+    }
+
+    const value = app.state.filters[key];
+    setValue(
+      element as HTMLInputElement | HTMLSelectElement,
+      value
+    );
+  });
+}
 
 function saveStateToStorage() {
   const serializableState = {
-    search: state.search,
-    sort: state.sort,
-    filters: state.filters,
-    page: state.page,
-    pageSize: state.pageSize,
+    search: app.state.search,
+    sort: app.state.sort,
+    filters: app.state.filters,
+    page: app.state.page,
+    pageSize: app.state.pageSize,
   };
 
   try {
@@ -56,7 +179,6 @@ function loadStateFromStorage(): Partial<AppState> | null {
   }
 }
 
-// Вспомогательные проверки
 function isValidSort(sort: any): sort is AppState['sort'] {
   return (
     sort &&
@@ -69,68 +191,8 @@ function isValidFilters(filters: any): filters is Record<string, any> {
   return typeof filters === 'object' && filters !== null;
 }
 
-function syncUIWithState() {
-  // Поиск
-  const searchInput = document.getElementById("search") as HTMLInputElement;
-  searchInput.value = state.search || "";
-
-  // Фильтры — художник
-  const artistInput = document.getElementById("filter-artist") as HTMLInputElement;
-  artistInput.value = (state.filters.artist as string) || "";
-
-  // Фильтры — год (диапазон)
-  const yearMinInput = document.getElementById("filter-year-min") as HTMLInputElement;
-  const yearMaxInput = document.getElementById("filter-year-max") as HTMLInputElement;
-
-  const yearFilter = state.filters.year as { min?: number; max?: number } | undefined;
-
-  yearMinInput.value = yearFilter?.min != null ? String(yearFilter.min) : "";
-  yearMaxInput.value = yearFilter?.max != null ? String(yearFilter.max) : "";
-
-  // Фильтр — public domain
-  const pubSelect = document.getElementById("filter-public") as HTMLSelectElement;
-  if (state.filters.isPublicDomain === true) {
-    pubSelect.value = "true";
-  } else if (state.filters.isPublicDomain === false) {
-    pubSelect.value = "false";
-  } else {
-    pubSelect.value = "";
-  }
-}
-
-interface AppState {
-  search: string;
-  sort: { columnId: ColumnId | null; direction: "asc" | "desc" | null };
-  filters: Record<ColumnId, any>;
-  page: number;
-  pageSize: number;
-}
-
-let state: AppState = {
-  search: "",
-  sort: { columnId: null, direction: null },
-  filters: {},
-  page: 1,
-  pageSize: 20,
-};
-
-const columns: Column<typeof samplePaintings[number]>[] = [
-  { id: "title", header: "Название", accessor: "title", searchable: true, sortable: true, filterable: { type: "text", mode: "contains" } },
-  { id: "artist", header: "Художник", accessor: "artist", searchable: true, sortable: true, filterable: { type: "text", mode: "contains" } },
-  { id: "year", header: "Год", accessor: "year", sortable: true, filterable: { type: "date", mode: "range" } },
-  { id: "medium", header: "Техника", accessor: "medium", searchable: true, filterable: { type: "text", mode: "contains" } },
-  { id: "isPublicDomain", header: "Public Domain", accessor: "isPublicDomain", sortable: true, filterable: { type: "boolean" } },
-];
-
-let config: TableConfig = {
-  searchable: true,
-  sortable: true,
-  filterable: true,
-  paginated: true,
-  pageSizeOptions: [10, 20, 50, 100],
-};
-
-function renderHeaders(columns: Column<Painting>[]) {
+// ─── Рендеринг ────────────────────────────────────────────
+function renderHeaders(columns: Column<RowType>[]) {
   const theadRow = document.querySelector<HTMLTableRowElement>("#paintings thead tr")!;
   theadRow.innerHTML = "";
 
@@ -145,15 +207,15 @@ function renderHeaders(columns: Column<Painting>[]) {
     }
 
     // индикатор текущей сортировки
-    if (state.sort.columnId === col.id && state.sort.direction) {
-      th.classList.add(state.sort.direction);
+    if (app.state.sort.columnId === col.id && app.state.sort.direction) {
+      th.classList.add(app.state.sort.direction);
     }
 
     theadRow.appendChild(th);
   });
 }
 
-function renderRows(visibleRows: Painting[], columns: Column<Painting>[]) {
+function renderRows(visibleRows: RowType[], columns: Column<RowType>[]) {
   const tbody = document.getElementById("table-body")!;
   tbody.innerHTML = "";
 
@@ -179,8 +241,9 @@ function renderRows(visibleRows: Painting[], columns: Column<Painting>[]) {
   });
 }
 
+// ─── Обработчики событий ──────────────────────────────────
 const debouncedSearch = debounce((value: string) => {
-  state.search = value.trim();
+  app.state.search = value.trim();
   runPipeline();
 }, 350);
 
@@ -188,31 +251,6 @@ document.getElementById("search")!.addEventListener("input", (e) => {
   const input = e.target as HTMLInputElement;
   debouncedSearch(input.value);
 });
-
-function updateFilters() {
-  state.filters = {};
-
-  const artistInput = document.getElementById("filter-artist") as HTMLInputElement;
-  if (artistInput.value.trim()) {
-    state.filters.artist = artistInput.value.trim();
-  }
-
-  const minYear = (document.getElementById("filter-year-min") as HTMLInputElement).value;
-  const maxYear = (document.getElementById("filter-year-max") as HTMLInputElement).value;
-
-  if (minYear || maxYear) {
-    state.filters.year = {};
-    if (minYear) state.filters.year.min = String(minYear);
-    if (maxYear) state.filters.year.max = String(maxYear);
-  }
-
-  const pubSelect = document.getElementById("filter-public") as HTMLSelectElement;
-  const pubValue = pubSelect.value;
-  if (pubValue === "true") state.filters.isPublicDomain = true;
-  if (pubValue === "false") state.filters.isPublicDomain = false;
-
-  runPipeline();
-}
 
 document.querySelectorAll<HTMLInputElement | HTMLSelectElement>(".filters input, .filters select").forEach((el) => {
   const debouncedUpdate = debounce(updateFilters, 300);
@@ -224,48 +262,29 @@ document.getElementById("clear-filters")!.addEventListener("click", () => {
   (document.querySelectorAll(".filters input, .filters select") as NodeListOf<HTMLInputElement | HTMLSelectElement>).forEach(
     (el) => (el.value = "")
   );
-  state.filters = {};
+  app.state.filters = {};
   runPipeline();
 });
 
-function handleSortClick(colId: ColumnId) {
-  const col = columns.find((c) => c.id === colId);
-  if (!col?.sortable) return;
-
-  if (state.sort.columnId === colId) {
-    if (state.sort.direction === "asc") {
-      state.sort.direction = "desc";
-    } else if (state.sort.direction === "desc") {
-      state.sort = { columnId: null, direction: null };
-    } else {
-      state.sort.direction = "asc";
-    }
-  } else {
-    state.sort = { columnId: colId, direction: "asc" };
-  }
-
-  runPipeline();
-}
-
 document.getElementById("prev")!.addEventListener("click", () => {
-  if (state.page > 1) {
-    state.page--;
+  if (app.state.page > 1) {
+    app.state.page--;
     runPipeline();
   }
 });
 
 document.getElementById("next")!.addEventListener("click", () => {
   const totalPages = getTotalPages();
-  if (state.page < totalPages) {
-    state.page++;
+  if (app.state.page < totalPages) {
+    app.state.page++;
     runPipeline();
   }
 });
 
 document.getElementById("page-size")!.addEventListener("change", (e) => {
   const select = e.target as HTMLSelectElement;
-  state.pageSize = Number(select.value);
-  state.page = 1;
+  app.state.pageSize = Number(select.value);
+  app.state.page = 1;
   runPipeline();
 });
 
@@ -275,7 +294,7 @@ document.getElementById("reset-all")!.addEventListener("click", () => {
   localStorage.removeItem(STORAGE_KEY);
 
   // Возвращаем начальное состояние
-  state = {
+  app.state = {
     search: "",
     sort: { columnId: null, direction: null },
     filters: {},
@@ -292,47 +311,106 @@ document.getElementById("reset-all")!.addEventListener("click", () => {
   runPipeline();
 });
 
+// ─── Главный цикл ─────────────────────────────────────────
+function updateFilters() {
+  const newFilters: Record<ColumnId, any> = {};
+
+  filterBindings.forEach(({ id, key, getValue }) => {
+    const el = document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+    const value = getValue(el);
+    if (value !== undefined) {
+      const isSecondYear = key in newFilters && typeof value === 'object';
+      if (isSecondYear) {
+        newFilters[key] = { ...newFilters[key], ...value };
+      } else {
+        newFilters[key] = value;
+      }
+    }
+  });
+
+  app.state.filters = newFilters;
+  runPipeline();
+}
+
+function handleSortClick(colId: ColumnId) {
+  const col = app.columns.find((c) => c.id === colId);
+  if (!col?.sortable) return;
+
+  if (app.state.sort.columnId === colId) {
+    if (app.state.sort.direction === "asc") {
+      app.state.sort.direction = "desc";
+    } else if (app.state.sort.direction === "desc") {
+      app.state.sort = { columnId: null, direction: null };
+    } else {
+      app.state.sort.direction = "asc";
+    }
+  } else {
+    app.state.sort = { columnId: colId, direction: "asc" };
+  }
+
+  runPipeline();
+}
+
 function getTotalPages(): number {
-  const processed = getProcessedData(samplePaintings, columns, config, state);
+  const processed = getProcessedData(samplePaintings, app.columns, app.config, app.state);
   return processed.totalPages;
 }
 
 function runPipeline() {
-  const processed = getProcessedData(samplePaintings, columns, config, state);
+  const processed = computeVisibleData();
+  updateUI(processed);
+}
 
-  renderRows(processed.visibleRows as Painting[], columns);
+function computeVisibleData() {
+  return getProcessedData(samplePaintings, app.columns, app.config, app.state);
+}
 
-  // Обновляем индикаторы сортировки
-  document.querySelectorAll<HTMLTableCellElement>("th.sortable").forEach((th) => {
-    th.classList.remove("asc", "desc");
-    if (th.dataset.col === state.sort.columnId && state.sort.direction) {
-      th.classList.add(state.sort.direction);
-    }
-  });
+function updateUI(processed: ReturnType<typeof getProcessedData>) {
+  renderRows(processed.visibleRows as RowType[], app.columns);
 
-  // Обновляем пагинацию
-  const totalPages = processed.totalPages;
-  document.getElementById("page-info")!.textContent = `Страница ${processed.currentPage ?? state.page} из ${totalPages || 1}`;
-
-  (document.getElementById("prev") as HTMLButtonElement).disabled = state.page <= 1;
-  (document.getElementById("next") as HTMLButtonElement).disabled = state.page >= totalPages;
-
+  updateSortIndicators();
+  updatePagination(processed);
   saveStateToStorage();
 }
 
+function updateSortIndicators() {
+  document.querySelectorAll<HTMLTableCellElement>("th.sortable").forEach(th => {
+    th.classList.remove("asc", "desc");
+    if (th.dataset.col === app.state.sort.columnId && app.state.sort.direction) {
+      th.classList.add(app.state.sort.direction);
+    }
+  });
+}
+
+function updatePagination(processed: any) {
+  const info = document.getElementById("page-info")!;
+  const prev = document.getElementById("prev") as HTMLButtonElement;
+  const next = document.getElementById("next") as HTMLButtonElement;
+
+  const page = processed.currentPage ?? app.state.page;
+  const total = processed.totalPages;
+
+  info.textContent = `Страница ${page} из ${total || 1}`;
+  prev.disabled = page <= 1;
+  next.disabled = page >= total;
+}
+
+// ─── Инициализация ────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
   const savedState = loadStateFromStorage();
 
   if (savedState) {
-    state = { ...state, ...savedState };
+    app.state = { ...app.state, ...savedState };
     
     // Дополнительная защита: если страница слишком большая — сбросим на 1
     // (будет скорректировано в runPipeline после вычисления totalPages)
-    if (state.page < 1) state.page = 1;
+    if (app.state.page < 1) app.state.page = 1;
   }
+
+  console.log(app.state)
 
   syncUIWithState();
 
-  renderHeaders(columns);
+  renderHeaders(app.columns);
   runPipeline();
 });
