@@ -8,7 +8,7 @@ import type { Column, TableConfig, TableState, ProcessedResult, ColumnId, Primit
  * - Иначе оставляет только те строки, где хотя бы в одной searchable колонке 
  *   найдена подстрока (без учёта регистра)
  */
-export function applyGlobalSearch<T>(
+function applyGlobalSearch<T>(
   rows: T[],
   columns: Column<T>[],
   search: string
@@ -50,7 +50,7 @@ function getCellValue<T>(row: T, col: Column<T>): Primitive {
  * Применяет все активные фильтры к строкам
  * Если фильтры выключены в конфиге — возвращает исходный массив без изменений
  */
-export function applyFilters<T>(
+function applyFilters<T>(
   rows: T[],
   columns: Column<T>[],
   filters: Record<ColumnId, any>,
@@ -168,7 +168,7 @@ export function applyFilters<T>(
  * Применяет сортировку по одной колонке, если она включена
  * Использует стабильную сортировку (сохраняет порядок равных элементов)
  */
-export function applySort<T>(
+function applySort<T>(
   rows: T[],
   columns: Column<T>[],
   sort: TableState["sort"]
@@ -217,7 +217,7 @@ function getTotalPages<T>(rows: T[], pageSize: number) {
   return Math.ceil(rows.length / pageSize) || 1;
 }
 
-export function applyPagination<T>(
+function applyPagination<T>(
   rows: T[],
   page: number,
   pageSize: number
@@ -273,24 +273,3 @@ export function getProcessedData<T>(
     pageSize: state.pageSize || 20,
   };
 }
-
-// При клике на заголовок колонки с id = clickedColumnId
-// function handleHeaderClick(clickedColumnId: ColumnId) {
-//   setState(prev => {
-//     const current = prev.sort;
-
-//     // Если кликнули по уже активной колонке
-//     if (current.columnId === clickedColumnId) {
-//       if (current.direction === "asc") {
-//         return { ...prev, sort: { columnId: clickedColumnId, direction: "desc" } };
-//       }
-//       if (current.direction === "desc") {
-//         return { ...prev, sort: { columnId: null, direction: null } }; // сброс
-//       }
-//       return { ...prev, sort: { columnId: clickedColumnId, direction: "asc" } };
-//     }
-
-//     // Клик по новой колонке → сразу asc
-//     return { ...prev, sort: { columnId: clickedColumnId, direction: "asc" } };
-//   });
-// }
