@@ -8,7 +8,8 @@ import type { ColumnId, Column, TableConfig, Primitive } from "./types.ts";
 
 // Типы и константы
 const STORAGE_KEY = 'paintings-table-state' as const;
-const PAGE_SIZE_DEFAULT = 20 as const;
+const PAGE_SIZE_DEFAULT: number = 20 as const;
+const PAGE_SIZE_OPTIONS: number[] = [10, 20, 50, 100] as const;
 
 const filterBindings: FilterBinding[] = [
   {
@@ -85,7 +86,7 @@ const app = {
     sort: { columnId: null, direction: null } as AppState["sort"],
     filters: {} as Record<ColumnId, any>,
     page: 1,
-    pageSize: 20,
+    pageSize: PAGE_SIZE_DEFAULT,
   } satisfies AppState,
 
   columns: [
@@ -101,7 +102,7 @@ const app = {
     sortable: true,
     filterable: true,
     paginated: true,
-    pageSizeOptions: [10, 20, 50, 100],
+    pageSizeOptions: PAGE_SIZE_OPTIONS,
   } satisfies TableConfig,
 };
 
@@ -176,9 +177,9 @@ function loadStateFromStorage(): Partial<AppState> | null {
       sort: isValidSort(parsed.sort) ? parsed.sort : { columnId: null, direction: null },
       filters: isValidFilters(parsed.filters) ? parsed.filters : {},
       page: Math.max(1, Number(parsed.page) || 1),
-      pageSize: [10, 20, 50, 100].includes(Number(parsed.pageSize))
+      pageSize: PAGE_SIZE_OPTIONS.includes(Number(parsed.pageSize))
         ? Number(parsed.pageSize)
-        : 20,
+        : PAGE_SIZE_DEFAULT,
     };
   } catch (err) {
     console.warn('Ошибка чтения состояния из localStorage', err);
@@ -306,7 +307,7 @@ document.getElementById("reset-all")!.addEventListener("click", () => {
     sort: { columnId: null, direction: null },
     filters: {},
     page: 1,
-    pageSize: 20,
+    pageSize: PAGE_SIZE_DEFAULT,
   };
 
   // Очищаем поля ввода
